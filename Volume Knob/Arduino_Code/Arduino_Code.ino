@@ -8,18 +8,50 @@
 #define ENCODER_SW A2
 
 ClickEncoder *encoder;
-int16_t last, value;
+int16_t last, value; // Deklaration der Variablen "last" und "value"
 
 void timerIsr() {
-  encoder->service();
+  encoder->service(); }
 
 
 void setup() {
-  // put your setup code here, to run once:
+  Serial.begin(9600);
+  Consumer.begin(); // Initialisierung der Tastatur
+  encoder = new ClickEncoder(ENCODER_DT, ENCODER_CLK, ENCODER_SW); // Initialisierung von Encoder-Pins
+
+  Timer1.initialize(2000); // Initialisierung der Frequenz, bei der der Encoder eine Drehung erkennt
+  Timer1.attachInterrupt(timerIsr);
+  last = -1;
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  value += encoder->getValue();
 
-}
+  // Drehung des Encoders
+  if (value != last) {  // Wenn der neue Wert vom alten Wert abweicht, wurde der Encoder gedreht 
+    if (last<value) // Erkennt die Drehrichtung
+    Consumer.write(MEDIA_VOLUME_UP);  // Mehr Lautstärke
+    else
+    Consumer.write(MEDIA_VOLUME_DOWN);  // Weniger Lautstärke
+    last = value; // Werte auffrischen
+
+    Serial.print(value); // Zeigt den Encoder-Wert auf dem seriellen Monitor an
+  }
+
+  // Encoder-Taste
+  ClickEncoder::Button b = encoder->getButton(); // Schauen Sie sich den aktuellen Wert der Taste an
+  if (b != ClickEncoder::Open) { // Wenn die Taste nicht gedrückt ist, unternehmen Sie nichts
+    switch (b) {
+      case ClickEncoder::Clicked: //  Wenn die Taste einmal gedrückt wird ...
+        Consumer.write(MEDIA_PLAY_PAUSE); // Halten Sie die Medien an
+       break;
+
+       case ClickEncoder::DoubleClicked: // Wenn die Taste zweimal gedrückt wird ...
+        Consumer.write(MEDIA_NEXT); // Springen Sie zu den nächsten Medien 
+        break;
+    }
+   }
+
+   delay(30); // Warten Sie 30 Millisekunden
+  }
